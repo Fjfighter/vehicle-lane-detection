@@ -29,12 +29,15 @@ utils.display_lines.counter = 0
 utils.display_lines.prev_avg_lines_center = None
 utils.display_lines.prev_avg_lines = None
 
-cars_cache_max = 20
-NUM_DETECTIONS_THRES = 3
-CLOSE_DIST_THRES = 8
+CARS_CACHE_MAX = 20             # car cache limit
+NUM_DETECTIONS_THRES = 4        # num car detections threshold
+CLOSE_DIST_THRES = 10           # car point euclidian distance threshold
+CLOSE_DIST_THRES_DAMPED = 15    # car point euclidian distance threshold on damped cache
+
 cars_cache = []
 cars_cache_mod = []
 avg_car_list = []
+avg_car_list_damped = []
 car_counter = 0
 
 while vid.isOpened():
@@ -42,31 +45,24 @@ while vid.isOpened():
 
     im_canny = utils.canny_edge_detector(im1)
 
+    # run object detection to find car matches
     if car_counter % 2 == 0:
         gray = cv2.cvtColor(im1, cv2.COLOR_BGR2GRAY)
 
+        # mask input image
         polygons = np.array([
-            [[0, gray.shape[0]-gray.shape[0]/5], [gray.shape[1]/3, gray.shape[0]/3], [gray.shape[1]-gray.shape[1]/3, gray.shape[0]/3], [gray.shape[1], gray.shape[0]-gray.shape[0]/5]]
+            [[0, gray.shape[0]-gray.shape[0]/5], [gray.shape[1]/8, gray.shape[0]/4], [gray.shape[1]-gray.shape[1]/8, gray.shape[0]/4], [gray.shape[1], gray.shape[0]-gray.shape[0]/5]]
             ])
         mask = np.zeros_like(gray)
         cv2.fillPoly(mask, np.int32(polygons), 255) 
         masked_image = cv2.bitwise_and(gray, mask) 
-        cars = car_cascade.detectMultiScale(masked_image, 1.15, 4)
-
-        # populate car cache on first run
-        # if car_counter == 0:
-        #     for i in range(cars_cache_max):
-        #         cars_cache[i] = cars
-
-        # shift cars cache
-        # for i in range(cars_cache_max-1):
-        #     cars_cache[i+1] = cars_cache[i]
-
-        # cars_cache[0] = cars
-
+        
+        # detect and append cars to car cache
+        cars = car_cascade.detectMultiScale(masked_image, 1.15, 3)
         cars_cache.append(cars)
 
-        if len(cars_cache) > cars_cache_max:
+        # remove old cars from cache if exceed cache limit
+        if len(cars_cache) > CARS_CACHE_MAX:
             cars_cache.pop(0)
 
     if car_counter % 10 == 0:
@@ -74,7 +70,9 @@ while vid.isOpened():
         
     if car_counter % 10 == 0:
         avg_car_list = []
+        avg_car_list_damped = []
 
+    # filter and average cars that meet threshold critera
     for i in range(len(cars_cache)):            
         for j in range(len(cars_cache[i])):
             num_detections = 0
@@ -90,23 +88,67 @@ while vid.isOpened():
                     point2 = [cars_cache[x][y][0], cars_cache[x][y][1]]
                     yw, yh = cars_cache[x][y][2], cars_cache[x][y][3]
                     iw, ih = cars_cache[i][j][2], cars_cache[i][j][3]
+                    
+                    # compare if within thresholds
                     if utils.getDist(point1, point2) < CLOSE_DIST_THRES and abs(yw-iw) < CLOSE_DIST_THRES and abs(yh-ih) < CLOSE_DIST_THRES:
                         num_detections += 1
                         avg_car_cache.append(cars_cache[x][y])
         
+            # compare if detected enough times
             if num_detections > NUM_DETECTIONS_THRES:
                 cars_cache_mod.append(cars_cache[i])
                 avg_car_cache.append(cars_cache[i][j])
 
+                # calculate average box
                 calc_car_avg = np.average(avg_car_cache, axis=0).astype(int)
-                if not any((np.array(calc_car_avg) == n).all() for n in np.array(avg_car_list)): # (np.array(calc_car_avg).all() == np.array(avg_car_list).any()):
+
+                point1 = [calc_car_avg[0], calc_car_avg[1]]
+                aw, ah = calc_car_avg[2], calc_car_avg[3]
+                n = 0
+                while n < len(avg_car_list):
+                    point2 = [avg_car_list[n][0], avg_car_list[n][1]]
+                    lw, lh = avg_car_list[n][2], avg_car_list[n][3]
+                    if utils.getDist(point1, point2) < CLOSE_DIST_THRES_DAMPED and abs(aw-lw) < CLOSE_DIST_THRES_DAMPED and abs(ah-lh) < CLOSE_DIST_THRES_DAMPED:
+                        avg_car_list.pop(n)
+                    else:
+                        n += 1
+
+                # if not any((np.array(calc_car_avg) == n).all() for n in np.array(avg_car_list)): # (np.array(calc_car_avg).all() == np.array(avg_car_list).any()):
                     # print(calc_car_avg)
-                    avg_car_list.append(calc_car_avg)
+                avg_car_list.append(calc_car_avg)
+       
+    # for i in range(len(avg_car_list)):
+    #     num_detections = 0
+    #     avg_car_cache = []
+
+    #     for j in range(len(avg_car_list)):
+
+    #         if i == j:
+    #             continue
+
+    #         point1 = [avg_car_list[i][0], avg_car_list[i][1]]
+    #         point2 = [avg_car_list[j][0], avg_car_list[j][1]]
+    #         jw, jh = avg_car_list[j][2], avg_car_list[j][3]
+    #         iw, ih = avg_car_list[i][2], avg_car_list[i][3]
+    #         if utils.getDist(point1, point2) < CLOSE_DIST_THRES and abs(yw-iw) < CLOSE_DIST_THRES and abs(yh-ih) < CLOSE_DIST_THRES:
+    #             num_detections += 1
+    #             avg_car_cache.append(avg_car_list[j])
+    
+    #     if num_detections > NUM_DETECTIONS_THRES:
+    #         cars_cache_mod.append(avg_car_list[i])
+    #         avg_car_cache.append(avg_car_list[i])
+
+    #         calc_car_avg = np.average(avg_car_cache, axis=0).astype(int)
+    #         if not any((np.array(calc_car_avg) == n).all() for n in np.array(avg_car_list_damped)): # (np.array(calc_car_avg).all() == np.array(avg_car_list).any()):
+    #             # print(calc_car_avg)
+    #             avg_car_list_damped.append(calc_car_avg)
 
 
     car_counter += 1
 
     if settings.modifiers.debug:
+        for (x,y,w,h) in cars:
+            cv2.rectangle(masked_image,(x,y),(x+w,y+h),(0,255,255),2)
         cv2.imshow("car mask", masked_image)
 
     # print(np.array(polygon, dtype=np.int32))

@@ -4,4 +4,4 @@ def modifiers():
     return
 
 
-modifiers.debug = False
+modifiers.debug = True
