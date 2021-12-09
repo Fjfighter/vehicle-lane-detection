@@ -6,12 +6,13 @@ import matplotlib.pyplot as plt
 import math
 import utils
 import settings
+import streamlink
 
 def main(source_path=None):
-    
+
     # load in video capture for source
     if source_path is None:
-        vid = cv2.VideoCapture("videos/vid_sample_1.mp4")
+        vid = cv2.VideoCapture("videos/vid_sample_2.mp4")
     else:
         vid = cv2.VideoCapture(source_path)
 

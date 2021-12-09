@@ -8,7 +8,7 @@ import math
 import settings
 
 
-def region_of_interest(image, top_offset=30, trap_width=100):
+def region_of_interest(image, top_offset=30, trap_width=200):
     '''
     Returns masked image with set parameters
     image: np array of image to be masked
@@ -40,7 +40,7 @@ def get_canny_image(image):
     gray_image = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY) 
     
     # blur and convert to canny image
-    blur = cv2.GaussianBlur(gray_image, (5, 5), 0) 
+    blur = cv2.GaussianBlur(gray_image, (5, 5), cv2.BORDER_DEFAULT) 
     canny = cv2.Canny(blur, 50, 150)
     
     # re-merge image back into 3 channels
