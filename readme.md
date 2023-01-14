@@ -1,3 +1,7 @@
+# Automated Lane Segmentation and Environment Tracking: 
+
+This program uses computer vision and machine learning techniques to identify, classify, and detect lane markings and signs in real-time. The system also uses YOLO to detect and classify vehicles and objects which is used to aid lane prediction.
+
 # Code Organization:
 
 - **main.py** - contains the main function where input source is being processed both by the lane detection system as well as the vehicle recognition system.
