@@ -1,6 +1,6 @@
 Code Organization:
     main.py - contains the main function where input source is being processed both by the lane detection system as well as the vehicle recognition system.
-    utils.py - contains helper functions to process image as well as compute final detection
+    project_utils.py - contains helper functions to process image as well as compute final detection
     settings.py - contains some helper flags for settings used during debugging. 
 
 How to Run:
