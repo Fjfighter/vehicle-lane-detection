@@ -4,6 +4,6 @@ def modifiers():
     return
 
 
-modifiers.debug = True
-modifiers.show_realtime_lines = True
+modifiers.debug = False
+modifiers.show_realtime_lines = False
 modifiers.dynamic_center_line = False
